@@ -12,8 +12,13 @@
 // 50% of a nominal "high" value
 #define SWITCH_THRESHOLD 1750
 
+// Update once every 100ms even if there are no changes
+#define MIN_UPDATE_INTERVAL 100000
+
 volatile unsigned long start_timing[4];
-volatile int values[4];
+volatile int isr_values[4];
+int values[4];
+long last_updated;
 
 int CH1_MASK;
 int CH2_MASK;
@@ -35,7 +40,8 @@ void setup() {
   CH3_MASK = digitalPinToBitMask(CH3_PIN);
   CH4_MASK = digitalPinToBitMask(CH4_PIN);
 
-  Joystick.begin();
+  // Don't auto-send, otherwise we're writing to the bus multiple times during the update loop
+  Joystick.begin(false);
 
   Joystick.setXAxisRange(AXIS_MIN, AXIS_MAX);
   Joystick.setYAxisRange(AXIS_MIN, AXIS_MAX);
@@ -47,12 +53,29 @@ void setup() {
 }
 
 void loop() {
-  Joystick.setXAxis(values[0]);
-  Joystick.setYAxis(values[1]);
-  Joystick.setButton(0, values[2] > SWITCH_THRESHOLD);
-  Joystick.setButton(1, values[3] > SWITCH_THRESHOLD);
+  bool update_required = false;
 
-  delay(1);
+  // Detect if the values have changed and send an update if any has
+  for (int i = 0; i < 4; ++i) {
+    if (values[i] != isr_values[i]) {
+      values[i] = isr_values[i];
+      update_required = true;
+    }
+  }
+
+  if (!update_required && micros() - last_updated > MIN_UPDATE_INTERVAL) {
+    update_required = true;
+  }
+
+  if (update_required) {
+    Joystick.setXAxis(values[0]);
+    Joystick.setYAxis(values[1]);
+    Joystick.setButton(0, values[2] > SWITCH_THRESHOLD);
+    Joystick.setButton(1, values[3] > SWITCH_THRESHOLD);
+  
+    Joystick.sendState();
+    last_updated = micros();
+  }
 }
 
 void ch1_isr() {
@@ -75,6 +98,6 @@ void update_channel(int mask, int channel){
   if (PIND & mask != 0) {
     start_timing[channel] = micros();
   } else {
-    values[channel] = micros() - start_timing[channel];
+    isr_values[channel] = micros() - start_timing[channel];
   }
 }
