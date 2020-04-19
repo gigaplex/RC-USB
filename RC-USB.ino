@@ -15,15 +15,15 @@
 // Update once every 100ms even if there are no changes
 #define MIN_UPDATE_INTERVAL 100000
 
-volatile unsigned long start_timing[4];
-volatile int isr_values[4];
-int values[4];
-long last_updated;
+volatile uint32_t start_timing[4];
+volatile uint16_t isr_values[4];
+uint16_t values[4];
+uint32_t last_updated;
 
-int CH1_MASK;
-int CH2_MASK;
-int CH3_MASK;
-int CH4_MASK;
+uint8_t CH1_MASK;
+uint8_t CH2_MASK;
+uint8_t CH3_MASK;
+uint8_t CH4_MASK;
 
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
     2, 0, true, true, false, // Buttons, Hat Switches, X, Y, Z
@@ -57,8 +57,13 @@ void loop() {
 
   // Detect if the values have changed and send an update if any has
   for (int i = 0; i < 4; ++i) {
-    if (values[i] != isr_values[i]) {
-      values[i] = isr_values[i];
+    // Atomic read since it's a multi-byte value
+    noInterrupts();
+    uint16_t value = isr_values[i];
+    interrupts();
+    
+    if (values[i] != value) {
+      values[i] = value;
       update_required = true;
     }
   }
@@ -94,7 +99,7 @@ void ch4_isr() {
   update_channel(CH4_MASK, 3);
 }
 
-void update_channel(int mask, int channel){
+void update_channel(uint8_t mask, int channel){
   if (PIND & mask != 0) {
     start_timing[channel] = micros();
   } else {
