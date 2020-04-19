@@ -1,16 +1,19 @@
 #include <Joystick.h>
+#include "src/Timer1.h"
 
 #define CH1_PIN 1
 #define CH2_PIN 0
 #define CH3_PIN 2
 #define CH4_PIN 3
 
+// -- Since we're using a 0.5us timer, prescale all the servo values by 2
 // Nominal range is 1000-2000. Some radios allow setting up to 150% travel
 // Reverse the range per Sanwa convention (Futaba will need to REV the channels)
-#define AXIS_MIN 2250
-#define AXIS_MAX 750
+#define AXIS_MIN 4500
+// Set the low range much lower than normal so that Sanwa SSR might work
+#define AXIS_MAX 100
 // 50% of a nominal "high" value
-#define SWITCH_THRESHOLD 1750
+#define SWITCH_THRESHOLD 3500
 
 // Update once every 100ms even if there are no changes
 #define MIN_UPDATE_INTERVAL 100000
@@ -34,6 +37,8 @@ void setup() {
   pinMode(CH2_PIN, INPUT);
   pinMode(CH3_PIN, INPUT);
   pinMode(CH4_PIN, INPUT);
+
+  Timer1::setup();
 
   CH1_MASK = digitalPinToBitMask(CH1_PIN);
   CH2_MASK = digitalPinToBitMask(CH2_PIN);
@@ -101,8 +106,8 @@ void ch4_isr() {
 
 void update_channel(uint8_t mask, int channel){
   if (PIND & mask != 0) {
-    start_timing[channel] = micros();
+    start_timing[channel] = Timer1::getCount();
   } else {
-    isr_values[channel] = micros() - start_timing[channel];
+    isr_values[channel] = Timer1::getCount() - start_timing[channel];
   }
 }
