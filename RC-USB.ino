@@ -29,8 +29,8 @@ uint8_t CH3_MASK;
 uint8_t CH4_MASK;
 
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
-    2, 0, true, true, false, // Buttons, Hat Switches, X, Y, Z
-    false, false, false, false, false, false, false, false);
+                   2, 0, true, true, false, // Buttons, Hat Switches, X, Y, Z
+                   false, false, false, false, false, false, false, false);
 
 void setup() {
   pinMode(CH1_PIN, INPUT);
@@ -66,7 +66,7 @@ void loop() {
     noInterrupts();
     uint16_t value = isr_values[i];
     interrupts();
-    
+
     if (values[i] != value) {
       values[i] = value;
       update_required = true;
@@ -82,7 +82,7 @@ void loop() {
     Joystick.setYAxis(values[1]);
     Joystick.setButton(0, values[2] > SWITCH_THRESHOLD);
     Joystick.setButton(1, values[3] > SWITCH_THRESHOLD);
-  
+
     Joystick.sendState();
     last_updated = micros();
   }
@@ -104,8 +104,8 @@ void ch4_isr() {
   update_channel(CH4_MASK, 3);
 }
 
-void update_channel(uint8_t mask, int channel){
-  if (PIND & mask != 0) {
+void update_channel(uint8_t mask, int channel) {
+  if (PIND & mask) {
     start_timing[channel] = Timer1::getCount();
   } else {
     isr_values[channel] = Timer1::getCount() - start_timing[channel];
